@@ -49,13 +49,26 @@
 
     <!-- Modal for New Post -->
     <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded">
+        <div class="bg-white p-6 rounded w-11/12 md:w-2/3 lg:w-1/2">
             <h2 class="text-xl mb-4">New Post</h2>
             <input type="text" id="postTitle" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Title">
             <textarea id="postContent" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Content"></textarea>
             <div class="flex justify-end">
                 <button id="savePostBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
                 <button id="cancelPostBtn" class="ml-2 bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Edit Post -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded w-11/12 md:w-2/3 lg:w-1/2">
+            <h2 class="text-xl mb-4">Edit Post</h2>
+            <input type="text" id="editPostTitle" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Title">
+            <textarea id="editPostContent" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Content"></textarea>
+            <div class="flex justify-end">
+                <button id="updatePostBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
+                <button id="cancelEditPostBtn" class="ml-2 bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
             </div>
         </div>
     </div>
@@ -79,15 +92,21 @@
 
             const newPostBtn = document.getElementById('newPostBtn');
             const modal = document.getElementById('modal');
+            const editModal = document.getElementById('editModal');
             const cancelPostBtn = document.getElementById('cancelPostBtn');
             const savePostBtn = document.getElementById('savePostBtn');
+            const updatePostBtn = document.getElementById('updatePostBtn');
+            const cancelEditPostBtn = document.getElementById('cancelEditPostBtn');
             const postTitle = document.getElementById('postTitle');
             const postContent = document.getElementById('postContent');
+            const editPostTitle = document.getElementById('editPostTitle');
+            const editPostContent = document.getElementById('editPostContent');
             const postsContainer = document.getElementById('postsContainer');
 
             let users = JSON.parse(localStorage.getItem('users')) || [];
             let posts = JSON.parse(localStorage.getItem('posts')) || [];
             let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            let currentEditPostId = null;
 
             if (currentUser) {
                 showForum();
@@ -143,13 +162,31 @@
                 const title = postTitle.value.trim();
                 const content = postContent.value.trim();
                 if (title && content) {
-                    const post = { id: Date.now(), title, content, comments: [], username: currentUser.username };
+                    const post = { id: Date.now(), title, content, comments: [], username: currentUser.username, likes: 0, views: 0 };
                     posts.push(post);
                     localStorage.setItem('posts', JSON.stringify(posts));
                     renderPosts();
                     modal.classList.add('hidden');
                     postTitle.value = '';
                     postContent.value = '';
+                }
+            });
+
+            cancelEditPostBtn.addEventListener('click', () => {
+                editModal.classList.add('hidden');
+            });
+
+            updatePostBtn.addEventListener('click', () => {
+                const title = editPostTitle.value.trim();
+                const content = editPostContent.value.trim();
+                if (title && content && currentEditPostId !== null) {
+                    const post = posts.find(p => p.id === currentEditPostId);
+                    post.title = title;
+                    post.content = content;
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    renderPosts();
+                    editModal.classList.add('hidden');
+                    currentEditPostId = null;
                 }
             });
 
@@ -162,7 +199,17 @@
                         <h3 class="text-xl font-bold">${post.title}</h3>
                         <p>${post.content}</p>
                         <p class="text-sm text-gray-500">Posted by ${post.username}</p>
-                        <button onclick="viewPost(${post.id})" class="text-blue-500 mt-2">View Comments</button>
+                        <p class="text-sm text-gray-500">Views: ${post.views} | Likes: ${post.likes}</p>
+                        <div class="flex justify-between mt-2">
+                            <button onclick="viewPost(${post.id})" class="text-blue-500">View Comments</button>
+                            <div class="flex space-x-2">
+                                <button onclick="likePost(${post.id})" class="text-green-500">Like</button>
+                                ${post.username === currentUser.username ? `
+                                    <button onclick="editPost(${post.id})" class="text-yellow-500">Edit</button>
+                                    <button onclick="deletePost(${post.id})" class="text-red-500">Delete</button>
+                                ` : ''}
+                            </div>
+                        </div>
                     `;
                     postsContainer.appendChild(postElement);
                 });
@@ -191,14 +238,27 @@
             window.viewPost = function(postId) {
                 const post = posts.find(p => p.id === postId);
                 if (post) {
+                    post.views += 1;
+                    localStorage.setItem('posts', JSON.stringify(posts));
                     postsContainer.innerHTML = `
                         <div class="bg-white p-4 mb-4 rounded shadow">
                             <h3 class="text-xl font-bold">${post.title}</h3>
                             <p>${post.content}</p>
                             <p class="text-sm text-gray-500">Posted by ${post.username}</p>
+                            <p class="text-sm text-gray-500">Views: ${post.views} | Likes: ${post.likes}</p>
                             <h4 class="text-lg mt-4">Comments</h4>
                             <div id="commentsContainer">
-                                ${post.comments.map(comment => `<p class="mt-2">${comment}</p>`).join('')}
+                                ${post.comments.map((comment, index) => `
+                                    <div class="mt-2 flex justify-between items-start">
+                                        <p>${comment.text} <span class="text-sm text-gray-500">(by ${comment.username})</span></p>
+                                        ${comment.username === currentUser.username ? `
+                                            <div class="flex space-x-2">
+                                                <button onclick="editComment(${post.id}, ${index})" class="text-yellow-500">Edit</button>
+                                                <button onclick="deleteComment(${post.id}, ${index})" class="text-red-500">Delete</button>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
                             </div>
                             <textarea id="newComment" class="w-full mt-4 p-2 border border-gray-300 rounded" placeholder="Add a comment"></textarea>
                             <button onclick="addComment(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Comment</button>
@@ -212,9 +272,60 @@
                 const newComment = document.getElementById('newComment').value.trim();
                 if (newComment) {
                     const post = posts.find(p => p.id === postId);
-                    post.comments.push(`${newComment} (by ${currentUser.username})`);
+                    post.comments.push({ text: newComment, username: currentUser.username });
                     localStorage.setItem('posts', JSON.stringify(posts));
                     viewPost(postId);
+                }
+            }
+
+            window.editPost = function(postId) {
+                const post = posts.find(p => p.id === postId);
+                if (post && post.username === currentUser.username) {
+                    currentEditPostId = postId;
+                    editPostTitle.value = post.title;
+                    editPostContent.value = post.content;
+                    editModal.classList.remove('hidden');
+                }
+            }
+
+            window.deletePost = function(postId) {
+                const postIndex = posts.findIndex(p => p.id === postId);
+                if (postIndex !== -1 && posts[postIndex].username === currentUser.username) {
+                    posts.splice(postIndex, 1);
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    renderPosts();
+                }
+            }
+
+            window.editComment = function(postId, commentIndex) {
+                const post = posts.find(p => p.id === postId);
+                const comment = post.comments[commentIndex];
+                if (comment && comment.username === currentUser.username) {
+                    const newCommentText = prompt('Edit your comment:', comment.text);
+                    if (newCommentText !== null) {
+                        comment.text = newCommentText;
+                        localStorage.setItem('posts', JSON.stringify(posts));
+                        viewPost(postId);
+                    }
+                }
+            }
+
+            window.deleteComment = function(postId, commentIndex) {
+                const post = posts.find(p => p.id === postId);
+                const comment = post.comments[commentIndex];
+                if (comment && comment.username === currentUser.username) {
+                    post.comments.splice(commentIndex, 1);
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    viewPost(postId);
+                }
+            }
+
+            window.likePost = function(postId) {
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    post.likes += 1;
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    renderPosts();
                 }
             }
         });
