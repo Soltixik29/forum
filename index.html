@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="script.js"></script>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Navigation -->
+    <nav class="bg-blue-500 p-4">
+        <div class="container mx-auto flex justify-between">
+            <h1 class="text-white text-2xl">Forum</h1>
+            <div id="authLinks" class="text-white">
+                <!-- Authentication Links will be inserted here -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto mt-6">
+        <div id="authContainer" class="hidden">
+            <div id="registerForm" class="hidden">
+                <h2 class="text-xl mb-4">Register</h2>
+                <input type="text" id="registerUsername" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Username">
+                <input type="password" id="registerPassword" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Password">
+                <button id="registerBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Register</button>
+                <button id="showLoginForm" class="text-blue-500 mt-2">Already have an account? Login</button>
+            </div>
+            <div id="loginForm" class="hidden">
+                <h2 class="text-xl mb-4">Login</h2>
+                <input type="text" id="loginUsername" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Username">
+                <input type="password" id="loginPassword" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Password">
+                <button id="loginBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
+                <button id="showRegisterForm" class="text-blue-500 mt-2">Don't have an account? Register</button>
+            </div>
+        </div>
+        <div id="forumContainer" class="hidden">
+            <div class="flex justify-end mb-4">
+                <button id="newPostBtn" class="bg-green-500 text-white px-4 py-2 rounded">New Post</button>
+            </div>
+            <div id="postsContainer">
+                <!-- Posts will be dynamically inserted here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for New Post -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded">
+            <h2 class="text-xl mb-4">New Post</h2>
+            <input type="text" id="postTitle" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Title">
+            <textarea id="postContent" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Content"></textarea>
+            <div class="flex justify-end">
+                <button id="savePostBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+                <button id="cancelPostBtn" class="ml-2 bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const authLinks = document.getElementById('authLinks');
+            const authContainer = document.getElementById('authContainer');
+            const forumContainer = document.getElementById('forumContainer');
+            const registerForm = document.getElementById('registerForm');
+            const loginForm = document.getElementById('loginForm');
+            const showLoginForm = document.getElementById('showLoginForm');
+            const showRegisterForm = document.getElementById('showRegisterForm');
+            const registerBtn = document.getElementById('registerBtn');
+            const loginBtn = document.getElementById('loginBtn');
+            const registerUsername = document.getElementById('registerUsername');
+            const registerPassword = document.getElementById('registerPassword');
+            const loginUsername = document.getElementById('loginUsername');
+            const loginPassword = document.getElementById('loginPassword');
+
+            const newPostBtn = document.getElementById('newPostBtn');
+            const modal = document.getElementById('modal');
+            const cancelPostBtn = document.getElementById('cancelPostBtn');
+            const savePostBtn = document.getElementById('savePostBtn');
+            const postTitle = document.getElementById('postTitle');
+            const postContent = document.getElementById('postContent');
+            const postsContainer = document.getElementById('postsContainer');
+
+            let users = JSON.parse(localStorage.getItem('users')) || [];
+            let posts = JSON.parse(localStorage.getItem('posts')) || [];
+            let currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (currentUser) {
+                showForum();
+            } else {
+                showAuthForms();
+            }
+
+            registerBtn.addEventListener('click', () => {
+                const username = registerUsername.value.trim();
+                const password = registerPassword.value.trim();
+                if (username && password && !users.some(user => user.username === username)) {
+                    users.push({ username, password });
+                    localStorage.setItem('users', JSON.stringify(users));
+                    alert('Registration successful!');
+                    showLoginForm.click();
+                } else {
+                    alert('Username already exists or invalid inputs.');
+                }
+            });
+
+            loginBtn.addEventListener('click', () => {
+                const username = loginUsername.value.trim();
+                const password = loginPassword.value.trim();
+                const user = users.find(user => user.username === username && user.password === password);
+                if (user) {
+                    currentUser = user;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showForum();
+                } else {
+                    alert('Invalid username or password.');
+                }
+            });
+
+            showLoginForm.addEventListener('click', () => {
+                registerForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+            });
+
+            showRegisterForm.addEventListener('click', () => {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+            });
+
+            newPostBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+
+            cancelPostBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            savePostBtn.addEventListener('click', () => {
+                const title = postTitle.value.trim();
+                const content = postContent.value.trim();
+                if (title && content) {
+                    const post = { id: Date.now(), title, content, comments: [], username: currentUser.username };
+                    posts.push(post);
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    renderPosts();
+                    modal.classList.add('hidden');
+                    postTitle.value = '';
+                    postContent.value = '';
+                }
+            });
+
+            function renderPosts() {
+                postsContainer.innerHTML = '';
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.classList.add('bg-white', 'p-4', 'mb-4', 'rounded', 'shadow');
+                    postElement.innerHTML = `
+                        <h3 class="text-xl font-bold">${post.title}</h3>
+                        <p>${post.content}</p>
+                        <p class="text-sm text-gray-500">Posted by ${post.username}</p>
+                        <button onclick="viewPost(${post.id})" class="text-blue-500 mt-2">View Comments</button>
+                    `;
+                    postsContainer.appendChild(postElement);
+                });
+            }
+
+            function showForum() {
+                authContainer.classList.add('hidden');
+                forumContainer.classList.remove('hidden');
+                authLinks.innerHTML = `<button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded">Logout</button>`;
+                document.getElementById('logoutBtn').addEventListener('click', () => {
+                    localStorage.removeItem('currentUser');
+                    currentUser = null;
+                    showAuthForms();
+                });
+                renderPosts();
+            }
+
+            function showAuthForms() {
+                authContainer.classList.remove('hidden');
+                forumContainer.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                authLinks.innerHTML = '';
+            }
+
+            window.viewPost = function(postId) {
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    postsContainer.innerHTML = `
+                        <div class="bg-white p-4 mb-4 rounded shadow">
+                            <h3 class="text-xl font-bold">${post.title}</h3>
+                            <p>${post.content}</p>
+                            <p class="text-sm text-gray-500">Posted by ${post.username}</p>
+                            <h4 class="text-lg mt-4">Comments</h4>
+                            <div id="commentsContainer">
+                                ${post.comments.map(comment => `<p class="mt-2">${comment}</p>`).join('')}
+                            </div>
+                            <textarea id="newComment" class="w-full mt-4 p-2 border border-gray-300 rounded" placeholder="Add a comment"></textarea>
+                            <button onclick="addComment(${post.id})" class="bg-blue-500 text-white px-4 py-2 rounded mt-2">Comment</button>
+                            <button onclick="renderPosts()" class="bg-gray-500 text-white px-4 py-2 rounded mt-2">Back</button>
+                        </div>
+                    `;
+                }
+            }
+
+            window.addComment = function(postId) {
+                const newComment = document.getElementById('newComment').value.trim();
+                if (newComment) {
+                    const post = posts.find(p => p.id === postId);
+                    post.comments.push(`${newComment} (by ${currentUser.username})`);
+                    localStorage.setItem('posts', JSON.stringify(posts));
+                    viewPost(postId);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
