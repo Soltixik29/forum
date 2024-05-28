@@ -369,4 +369,50 @@
                     <div class="bg-white p-4 mb-4 rounded shadow">
                         <h3 class="text-xl font-bold">Profile</h3>
                         <div class="mt-4">
-                            <label class="block text-sm font-bold mb-2"
+                            <label class="block text-sm font-bold mb-2" for="profilePic">Profile Picture</label>
+                            <input type="file" id="profilePic" class="w-full p-2 border border-gray-300 rounded">
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-bold mb-2" for="banner">Banner</label>
+                            <input type="file" id="banner" class="w-full p-2 border border-gray-300 rounded">
+                        </div>
+                        <button onclick="saveProfile()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">Save</button>
+                        <button onclick="showForum()" class="bg-gray-500 text-white px-4 py-2 rounded mt-4">Back</button>
+                    </div>
+                `;
+                document.getElementById('profilePic').addEventListener('change', uploadProfilePic);
+                document.getElementById('banner').addEventListener('change', uploadBanner);
+            }
+
+            function uploadProfilePic(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    currentUser.profilePic = reader.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function uploadBanner(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    currentUser.banner = reader.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function saveProfile() {
+                const userIndex = users.findIndex(user => user.username === currentUser.username);
+                if (userIndex !== -1) {
+                    users[userIndex] = currentUser;
+                    localStorage.setItem('users', JSON.stringify(users));
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    alert('Profile updated successfully!');
+                    showForum();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
