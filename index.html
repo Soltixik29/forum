@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://kit.fontawesome.com/a076d05399.js"></script>
     <script defer src="script.js"></script>
 </head>
 <body class="bg-gray-100">
@@ -38,8 +39,9 @@
             </div>
         </div>
         <div id="forumContainer" class="hidden">
-            <div class="flex justify-end mb-4">
+            <div class="flex justify-between mb-4">
                 <button id="newPostBtn" class="bg-green-500 text-white px-4 py-2 rounded">New Post</button>
+                <input type="text" id="searchInput" class="w-full max-w-sm p-2 border border-gray-300 rounded" placeholder="Search posts...">
             </div>
             <div id="postsContainer">
                 <!-- Posts will be dynamically inserted here -->
@@ -53,6 +55,7 @@
             <h2 class="text-xl mb-4">New Post</h2>
             <input type="text" id="postTitle" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Title">
             <textarea id="postContent" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Content"></textarea>
+            <input type="text" id="postTags" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Tags (comma separated)">
             <div class="flex justify-end">
                 <button id="savePostBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
                 <button id="cancelPostBtn" class="ml-2 bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
@@ -66,6 +69,7 @@
             <h2 class="text-xl mb-4">Edit Post</h2>
             <input type="text" id="editPostTitle" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Title">
             <textarea id="editPostContent" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Content"></textarea>
+            <input type="text" id="editPostTags" class="w-full mb-2 p-2 border border-gray-300 rounded" placeholder="Tags (comma separated)">
             <div class="flex justify-end">
                 <button id="updatePostBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
                 <button id="cancelEditPostBtn" class="ml-2 bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
@@ -99,9 +103,12 @@
             const cancelEditPostBtn = document.getElementById('cancelEditPostBtn');
             const postTitle = document.getElementById('postTitle');
             const postContent = document.getElementById('postContent');
+            const postTags = document.getElementById('postTags');
             const editPostTitle = document.getElementById('editPostTitle');
             const editPostContent = document.getElementById('editPostContent');
+            const editPostTags = document.getElementById('editPostTags');
             const postsContainer = document.getElementById('postsContainer');
+            const searchInput = document.getElementById('searchInput');
 
             let users = JSON.parse(localStorage.getItem('users')) || [];
             let posts = JSON.parse(localStorage.getItem('posts')) || [];
@@ -118,7 +125,7 @@
                 const username = registerUsername.value.trim();
                 const password = registerPassword.value.trim();
                 if (username && password && !users.some(user => user.username === username)) {
-                    users.push({ username, password });
+                    users.push({ username, password, profilePic: '', banner: '' });
                     localStorage.setItem('users', JSON.stringify(users));
                     alert('Registration successful!');
                     showLoginForm.click();
@@ -161,14 +168,16 @@
             savePostBtn.addEventListener('click', () => {
                 const title = postTitle.value.trim();
                 const content = postContent.value.trim();
+                const tags = postTags.value.split(',').map(tag => tag.trim()).filter(tag => tag);
                 if (title && content) {
-                    const post = { id: Date.now(), title, content, comments: [], username: currentUser.username, likes: 0, views: 0 };
+                    const post = { id: Date.now(), title, content, comments: [], username: currentUser.username, likes: 0, views: 0, tags };
                     posts.push(post);
                     localStorage.setItem('posts', JSON.stringify(posts));
                     renderPosts();
                     modal.classList.add('hidden');
                     postTitle.value = '';
                     postContent.value = '';
+                    postTags.value = '';
                 }
             });
 
@@ -179,10 +188,12 @@
             updatePostBtn.addEventListener('click', () => {
                 const title = editPostTitle.value.trim();
                 const content = editPostContent.value.trim();
+                const tags = editPostTags.value.split(',').map(tag => tag.trim()).filter(tag => tag);
                 if (title && content && currentEditPostId !== null) {
                     const post = posts.find(p => p.id === currentEditPostId);
                     post.title = title;
                     post.content = content;
+                    post.tags = tags;
                     localStorage.setItem('posts', JSON.stringify(posts));
                     renderPosts();
                     editModal.classList.add('hidden');
@@ -190,9 +201,15 @@
                 }
             });
 
-            function renderPosts() {
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.toLowerCase();
+                const filteredPosts = posts.filter(post => post.title.toLowerCase().includes(query) || post.content.toLowerCase().includes(query) || post.tags.some(tag => tag.toLowerCase().includes(query)));
+                renderPosts(filteredPosts);
+            });
+
+            function renderPosts(postsToRender = posts) {
                 postsContainer.innerHTML = '';
-                posts.forEach(post => {
+                postsToRender.forEach(post => {
                     const postElement = document.createElement('div');
                     postElement.classList.add('bg-white', 'p-4', 'mb-4', 'rounded', 'shadow');
                     postElement.innerHTML = `
@@ -200,10 +217,13 @@
                         <p>${post.content}</p>
                         <p class="text-sm text-gray-500">Posted by ${post.username}</p>
                         <p class="text-sm text-gray-500">Views: ${post.views} | Likes: ${post.likes}</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            ${post.tags.map(tag => `<span class="bg-gray-200 text-gray-700 px-2 py-1 rounded">${tag}</span>`).join('')}
+                        </div>
                         <div class="flex justify-between mt-2">
                             <button onclick="viewPost(${post.id})" class="text-blue-500">View Comments</button>
                             <div class="flex space-x-2">
-                                <button onclick="likePost(${post.id})" class="text-green-500">Like</button>
+                                <button onclick="toggleLike(${post.id})" class="${post.likedByCurrentUser ? 'text-red-500' : 'text-green-500'}">${post.likedByCurrentUser ? 'Unlike' : 'Like'}</button>
                                 ${post.username === currentUser.username ? `
                                     <button onclick="editPost(${post.id})" class="text-yellow-500">Edit</button>
                                     <button onclick="deletePost(${post.id})" class="text-red-500">Delete</button>
@@ -218,7 +238,11 @@
             function showForum() {
                 authContainer.classList.add('hidden');
                 forumContainer.classList.remove('hidden');
-                authLinks.innerHTML = `<button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded">Logout</button>`;
+                authLinks.innerHTML = `
+                    <button id="profileBtn" class="bg-blue-500 px-4 py-2 rounded">Profile</button>
+                    <button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded ml-2">Logout</button>
+                `;
+                document.getElementById('profileBtn').addEventListener('click', showProfile);
                 document.getElementById('logoutBtn').addEventListener('click', () => {
                     localStorage.removeItem('currentUser');
                     currentUser = null;
@@ -284,16 +308,19 @@
                     currentEditPostId = postId;
                     editPostTitle.value = post.title;
                     editPostContent.value = post.content;
+                    editPostTags.value = post.tags.join(', ');
                     editModal.classList.remove('hidden');
                 }
             }
 
             window.deletePost = function(postId) {
-                const postIndex = posts.findIndex(p => p.id === postId);
-                if (postIndex !== -1 && posts[postIndex].username === currentUser.username) {
-                    posts.splice(postIndex, 1);
-                    localStorage.setItem('posts', JSON.stringify(posts));
-                    renderPosts();
+                if (confirm('Are you sure you want to delete this post?')) {
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1 && posts[postIndex].username === currentUser.username) {
+                        posts.splice(postIndex, 1);
+                        localStorage.setItem('posts', JSON.stringify(posts));
+                        renderPosts();
+                    }
                 }
             }
 
@@ -311,24 +338,35 @@
             }
 
             window.deleteComment = function(postId, commentIndex) {
-                const post = posts.find(p => p.id === postId);
-                const comment = post.comments[commentIndex];
-                if (comment && comment.username === currentUser.username) {
-                    post.comments.splice(commentIndex, 1);
-                    localStorage.setItem('posts', JSON.stringify(posts));
-                    viewPost(postId);
+                if (confirm('Are you sure you want to delete this comment?')) {
+                    const post = posts.find(p => p.id === postId);
+                    const comment = post.comments[commentIndex];
+                    if (comment && comment.username === currentUser.username) {
+                        post.comments.splice(commentIndex, 1);
+                        localStorage.setItem('posts', JSON.stringify(posts));
+                        viewPost(postId);
+                    }
                 }
             }
 
-            window.likePost = function(postId) {
+            window.toggleLike = function(postId) {
                 const post = posts.find(p => p.id === postId);
                 if (post) {
-                    post.likes += 1;
+                    if (post.likedByCurrentUser) {
+                        post.likes -= 1;
+                        post.likedByCurrentUser = false;
+                    } else {
+                        post.likes += 1;
+                        post.likedByCurrentUser = true;
+                    }
                     localStorage.setItem('posts', JSON.stringify(posts));
                     renderPosts();
                 }
             }
-        });
-    </script>
-</body>
-</html>
+
+            function showProfile() {
+                forumContainer.innerHTML = `
+                    <div class="bg-white p-4 mb-4 rounded shadow">
+                        <h3 class="text-xl font-bold">Profile</h3>
+                        <div class="mt-4">
+                            <label class="block text-sm font-bold mb-2"
