@@ -6,28 +6,29 @@
     <title>Hostio</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+<body class="bg-gray-100 flex flex-col items-center">
 
     <div class="container mx-auto p-4">
         <h1 class="text-4xl font-bold text-center mb-8">Hostio YouTube Video Viewer</h1>
         
         <div class="mb-4">
-            <input type="text" id="searchQuery" class="w-full p-2 rounded bg-gray-800 text-white" placeholder="Vyhledat na YouTube...">
-            <button onclick="searchYouTube()" class="mt-2 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Hledat</button>
+            <input type="text" id="searchQuery" class="w-full p-2 rounded bg-gray-200 text-gray-800" placeholder="Vyhledat na YouTube...">
+            <button onclick="searchYouTube()" class="mt-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Hledat</button>
         </div>
         
-        <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <div id="homePage" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <div id="recommendedVideos" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
     <script>
         async function searchYouTube() {
             const query = document.getElementById('searchQuery').value;
-            const apiKey = 'YOUR_API_KEY';
+            const apiKey = 'AIzaSyDsQ_nAnfLQneqv8Qgug_EM1d1J8YvClAs';
             const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${query}&key=${apiKey}&maxResults=9`);
             const data = await response.json();
             
-            const videoContainer = document.getElementById('videoContainer');
-            videoContainer.innerHTML = '';
+            const homePage = document.getElementById('homePage');
+            homePage.innerHTML = '';
 
             data.items.forEach(item => {
                 const videoId = item.id.videoId;
@@ -35,18 +36,56 @@
                 const videoThumbnail = item.snippet.thumbnails.high.url;
 
                 const videoElement = `
-                    <div class="bg-gray-800 rounded overflow-hidden shadow-lg">
-                        <img class="w-full" src="${videoThumbnail}" alt="${videoTitle}">
-                        <div class="px-6 py-4">
-                            <div class="font-bold text-xl mb-2">${videoTitle}</div>
+                    <a href="#${videoId}">
+                        <div class="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition duration-300">
+                            <img class="w-full" src="${videoThumbnail}" alt="${videoTitle}">
+                            <div class="px-6 py-4">
+                                <div class="font-bold text-xl mb-2">${videoTitle}</div>
+                            </div>
                         </div>
-                        <div class="px-6 pt-4 pb-2">
-                            <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Přehrát video</a>
-                        </div>
-                    </div>
+                    </a>
                 `;
-                videoContainer.innerHTML += videoElement;
+                homePage.innerHTML += videoElement;
             });
+
+            // Load recommended videos for the first video
+            if (data.items.length > 0) {
+                loadRecommendedVideos(data.items[0].id.videoId);
+            }
+        }
+
+        async function loadRecommendedVideos(videoId) {
+            const apiKey = 'AIzaSyDsQ_nAnfLQneqv8Qgug_EM1d1J8YvClAs';
+            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relatedToVideoId=${videoId}&key=${apiKey}&maxResults=6`);
+            const data = await response.json();
+            
+            const recommendedVideos = document.getElementById('recommendedVideos');
+            recommendedVideos.innerHTML = '';
+
+            data.items.forEach(item => {
+                const recommendedVideoId = item.id.videoId;
+                const recommendedVideoTitle = item.snippet.title;
+                const recommendedVideoThumbnail = item.snippet.thumbnails.high.url;
+
+                const recommendedVideoElement = `
+                    <a href="#${recommendedVideoId}">
+                        <div class="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition duration-300">
+                            <img class="w-full" src="${recommendedVideoThumbnail}" alt="${recommendedVideoTitle}">
+                            <div class="px-6 py-4">
+                                <div class="font-bold text-xl mb-2">${recommendedVideoTitle}</div>
+                            </div>
+                        </div>
+                    </a>
+                `;
+                recommendedVideos.innerHTML += recommendedVideoElement;
+            });
+        }
+
+        window.onload = function() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                document.getElementById(hash).scrollIntoView();
+            }
         }
     </script>
 </body>
